@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<info>
+	<id>dashboardtalk</id>
+	<name>Dashboard Talk Widget</name>
+	<summary>Show Talk messages on the dashboard</summary>
+	<description>Simple dashboard widget that surfaces recent Talk messages at a glance.</description>
+	<version>1.0.0</version>
+	<licence>agpl</licence>
+	<author>Your Name</author>
+	<namespace>DashboardTalk</namespace>
+	<dependencies>
+		<nextcloud min-version="25" max-version="31"/>
+		<php min-version="8.0"/>
+	</dependencies>
+	<types>
+		<dashboard/>
+	</types>
+	<dashboard>
+		<widget>
+			<id>dashboardtalk_widget</id>
+			<name>Talk Messages</name>
+			<order>10</order>
+			<icon>icon.svg</icon>
+		</widget>
+	</dashboard>
+</info>
+
+
+

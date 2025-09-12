@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<info>
+        <id>my-nextcloud-app</id>
+        <name>My Nextcloud App</name>
+        <summary>Sample app</summary>
+        <description>Minimal Nextcloud app scaffold with JS bundle</description>
+        <licence>agpl</licence>
+        <author>Your Name</author>
+        <version>1.0.2</version>
+        <namespace>MyNextcloudApp</namespace>
+        <category>tools</category>
+        <dependencies>
+                <nextcloud min-version="25" max-version="31"/>
+        </dependencies>
+</info>
+
+
+

@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<info>
+	<id>dashboardtalk</id>
+	<name>Dashboard Talk Widget</name>
+	<summary>A dashboard widget to display Nextcloud Talk messages</summary>
+	<description>A dashboard widget that displays recent messages from Nextcloud Talk conversations, allowing users to quickly view and interact with their Talk messages directly from the dashboard.</description>
+	<version>1.0.0</version>
+	<licence>agpl</licence>
+	<author>Your Name</author>
+	<author>your.email@example.com</author>
+	<category>dashboard</category>
+	<category>social</category>
+	<website>https://github.com/yourusername/dashboardtalk</website>
+	<bugs>https://github.com/yourusername/dashboardtalk/issues</bugs>
+	<repository type="git">https://github.com/yourusername/dashboardtalk.git</repository>
+	<screenshot>https://raw.githubusercontent.com/yourusername/dashboardtalk/master/screenshots/dashboard.png</screenshot>
+	<dependencies>
+		<nextcloud min-version="25" max-version="28"/>
+		<php min-version="8.0"/>
+	</dependencies>
+	<types>
+		<filesystem/>
+	</types>
+	<background-jobs>
+	</background-jobs>
+	<commands>
+	</commands>
+	<activity>
+	</activity>
+	<settings>
+	</settings>
+	<admin>
+	</admin>
+	<public>
+	</public>
+	<repair-steps>
+	</repair-steps>
+	<two-factor-providers>
+	</two-factor-providers>
+	<commands>
+	</commands>
+	<dashboard>
+		<widget>
+			<id>dashboardtalk_widget</id>
+			<name>Talk Messages</name>
+			<order>10</order>
+			<icon>icon.svg</icon>
+		</widget>
+	</dashboard>
+</info>

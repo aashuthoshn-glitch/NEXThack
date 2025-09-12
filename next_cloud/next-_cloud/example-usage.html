@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nextcloud Talk Widget Demo</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the demo */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" class="container mx-auto p-8">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold text-gray-800 mb-8">Nextcloud Talk Dashboard Widget Demo</h1>
+            
+            <!-- Room Selector -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Room Selection</h2>
+                <div class="flex items-center space-x-4">
+                    <label for="roomSelect" class="text-sm font-medium text-gray-700">Select Room:</label>
+                    <select 
+                        id="roomSelect"
+                        v-model="selectedRoomId" 
+                        class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Choose a room...</option>
+                        <option value="room1">General Discussion</option>
+                        <option value="room2">Project Updates</option>
+                        <option value="room3">Random Chat</option>
+                    </select>
+                    <button 
+                        @click="loadMockData"
+                        class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                        Load Mock Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Talk Widget -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4">Talk Widget</h2>
+                    <talk-widget :selected-room-id="selectedRoomId" />
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">Widget Information</h2>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <span class="font-medium">Selected Room:</span>
+                            <span class="text-gray-600">{{ selectedRoomId || 'None' }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Status:</span>
+                            <span class="text-green-600">Ready</span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Features:</span>
+                            <ul class="list-disc list-inside text-gray-600 mt-1">
+                                <li>Message display with timestamps</li>
+                                <li>Emoji reactions</li>
+                                <li>Reply functionality</li>
+                                <li>Loading states</li>
+                                <li>Error handling</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration Notes -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
+                <h3 class="text-lg font-semibold text-blue-800 mb-3">Integration Notes</h3>
+                <div class="text-sm text-blue-700 space-y-2">
+                    <p><strong>For Nextcloud Dashboard:</strong> This widget is designed to be embedded within the Nextcloud dashboard environment.</p>
+                    <p><strong>Authentication:</strong> Replace the mock token in <code>auth.js</code> with real Nextcloud session/OAuth tokens.</p>
+                    <p><strong>API Endpoints:</strong> The <code>talkApi.js</code> uses standard Nextcloud Talk REST API endpoints.</p>
+                    <p><strong>Styling:</strong> Uses TailwindCSS classes that should work well within Nextcloud's design system.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const { createApp, ref } = Vue;
+
+        // Import the TalkWidget component (in a real setup, this would be properly imported)
+        const TalkWidget = {
+            template: `
+                <div class="talk-widget bg-white rounded-lg shadow-md p-4 h-96 flex flex-col">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800">Nextcloud Talk</h3>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-gray-500">{{ selectedRoomName || 'Select Room' }}</span>
+                            <div v-if="isLoading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                        </div>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-sm">
+                        {{ error }}
+                    </div>
+
+                    <!-- Messages Container -->
+                    <div class="flex-1 overflow-y-auto mb-4 space-y-3" ref="messagesContainer">
+                        <div v-if="messages.length === 0 && !isLoading" class="text-center text-gray-500 py-8">
+                            No messages yet. Start a conversation!
+                        </div>
+                        
+                        <div v-for="message in messages" :key="message.id" class="flex flex-col space-y-1">
+                            <!-- Message Bubble -->
+                            <div class="flex items-start space-x-2">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2 mb-1">
+                                        <span class="text-sm font-medium text-gray-800">{{ message.actorDisplayName }}</span>
+                                        <span class="text-xs text-gray-500">{{ formatTimestamp(message.timestamp) }}</span>
+                                    </div>
+                                    <div class="bg-gray-100 rounded-lg px-3 py-2 max-w-xs">
+                                        <p class="text-sm text-gray-800">{{ message.message }}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Reaction Button -->
+                                <button
+                                    @click="toggleReaction(message.id)"
+                                    class="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 transition-colors"
+                                    title="React to message"
+                                >
+                                    <span class="text-lg">😊</span>
+                                </button>
+                            </div>
+
+                            <!-- Reactions Display -->
+                            <div v-if="message.reactions && message.reactions.length > 0" class="ml-4 flex flex-wrap gap-1">
+                                <span
+                                    v-for="reaction in message.reactions"
+                                    :key="\`\${reaction.emoji}-\${reaction.actorId}\`"
+                                    class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                >
+                                    {{ reaction.emoji }} {{ reaction.count }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reply Input -->
+                    <div class="flex items-center space-x-2 pt-3 border-t border-gray-200">
+                        <input
+                            v-model="newMessage"
+                            @keyup.enter="sendMessage"
+                            type="text"
+                            placeholder="Type a message..."
+                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            :disabled="isLoading"
+                        />
+                        <button
+                            @click="sendMessage"
+                            :disabled="!newMessage.trim() || isLoading"
+                            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm"
+                        >
+                            Send
+                        </button>
+                    </div>
+                </div>
+            `,
+            props: {
+                selectedRoomId: {
+                    type: String,
+                    default: null
+                }
+            },
+            setup(props) {
+                const messages = ref([])
+                const newMessage = ref('')
+                const isLoading = ref(false)
+                const error = ref('')
+                const selectedRoomName = ref('')
+                const messagesContainer = ref(null)
+
+                // Mock data for demonstration
+                const mockMessages = {
+                    room1: [
+                        {
+                            id: '1',
+                            message: 'Hello everyone! How is the project going?',
+                            actorDisplayName: 'Alice Johnson',
+                            timestamp: Date.now() / 1000 - 3600,
+                            reactions: [{ emoji: '👍', count: 2, actorId: 'user1' }]
+                        },
+                        {
+                            id: '2',
+                            message: 'Great progress! We should have the first version ready by Friday.',
+                            actorDisplayName: 'Bob Smith',
+                            timestamp: Date.now() / 1000 - 1800,
+                            reactions: []
+                        },
+                        {
+                            id: '3',
+                            message: 'Perfect! Looking forward to seeing the demo.',
+                            actorDisplayName: 'Carol Davis',
+                            timestamp: Date.now() / 1000 - 900,
+                            reactions: [{ emoji: '🎉', count: 1, actorId: 'user3' }]
+                        }
+                    ],
+                    room2: [
+                        {
+                            id: '4',
+                            message: 'The new feature is now deployed to staging.',
+                            actorDisplayName: 'David Wilson',
+                            timestamp: Date.now() / 1000 - 7200,
+                            reactions: []
+                        },
+                        {
+                            id: '5',
+                            message: 'Thanks for the update! I\'ll test it this afternoon.',
+                            actorDisplayName: 'Eva Brown',
+                            timestamp: Date.now() / 1000 - 3600,
+                            reactions: [{ emoji: '✅', count: 1, actorId: 'user5' }]
+                        }
+                    ],
+                    room3: [
+                        {
+                            id: '6',
+                            message: 'Anyone up for lunch?',
+                            actorDisplayName: 'Frank Miller',
+                            timestamp: Date.now() / 1000 - 1800,
+                            reactions: [{ emoji: '🍕', count: 3, actorId: 'user6' }]
+                        }
+                    ]
+                }
+
+                const loadMockData = () => {
+                    if (props.selectedRoomId && mockMessages[props.selectedRoomId]) {
+                        messages.value = mockMessages[props.selectedRoomId]
+                        selectedRoomName.value = getRoomName(props.selectedRoomId)
+                        error.value = ''
+                    } else {
+                        messages.value = []
+                        selectedRoomName.value = ''
+                    }
+                }
+
+                const getRoomName = (roomId) => {
+                    const names = {
+                        room1: 'General Discussion',
+                        room2: 'Project Updates',
+                        room3: 'Random Chat'
+                    }
+                    return names[roomId] || `Room ${roomId}`
+                }
+
+                const sendMessage = () => {
+                    if (!newMessage.value.trim()) return
+                    
+                    const messageText = newMessage.value.trim()
+                    newMessage.value = ''
+                    
+                    const newMsg = {
+                        id: Date.now().toString(),
+                        message: messageText,
+                        actorDisplayName: 'You',
+                        timestamp: Date.now() / 1000,
+                        reactions: []
+                    }
+                    
+                    messages.value.push(newMsg)
+                }
+
+                const toggleReaction = (messageId) => {
+                    const message = messages.value.find(m => m.id === messageId)
+                    if (message) {
+                        const existingReaction = message.reactions.find(r => r.emoji === '😊')
+                        if (existingReaction) {
+                            existingReaction.count++
+                        } else {
+                            message.reactions.push({ emoji: '😊', count: 1, actorId: 'current-user' })
+                        }
+                    }
+                }
+
+                const formatTimestamp = (timestamp) => {
+                    const date = new Date(timestamp * 1000)
+                    const now = new Date()
+                    const diff = now - date
+                    
+                    if (diff < 60000) return 'Just now'
+                    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+                    if (date.toDateString() === now.toDateString()) {
+                        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }
+                    return date.toLocaleDateString()
+                }
+
+                // Watch for room changes
+                Vue.watch(() => props.selectedRoomId, loadMockData, { immediate: true })
+
+                return {
+                    messages,
+                    newMessage,
+                    isLoading,
+                    error,
+                    selectedRoomName,
+                    messagesContainer,
+                    sendMessage,
+                    toggleReaction,
+                    formatTimestamp,
+                    loadMockData
+                }
+            }
+        }
+
+        createApp({
+            components: {
+                TalkWidget
+            },
+            setup() {
+                const selectedRoomId = ref('')
+
+                const loadMockData = () => {
+                    // This would trigger the widget to load data
+                    console.log('Loading mock data for room:', selectedRoomId.value)
+                }
+
+                return {
+                    selectedRoomId,
+                    loadMockData
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
