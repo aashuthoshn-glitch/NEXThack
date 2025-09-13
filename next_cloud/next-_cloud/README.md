@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dashboard Talk Widget
 
 A Nextcloud dashboard widget that displays recent messages from Nextcloud Talk conversations, allowing users to quickly view and interact with their Talk messages directly from the dashboard.
@@ -157,3 +158,7 @@ For support and questions:
 - Create an issue in the project repository
 - Check Nextcloud documentation for Talk API details
 - Review Nextcloud app development guidelines
+=======
+# NextMIND
+NextMIND is an AI-powered Nextcloud integration featuring a floating chat widget with real-time messaging, group management, video calls, and intelligent chatbot functionality. Built with Vue.js, PHP, and Docker for seamless team collaboration.
+>>>>>>> 0ad677b5201f1b29824a3105a64fed3eb4b19ca1

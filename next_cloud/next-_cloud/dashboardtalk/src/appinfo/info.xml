@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<info>
+    <id>ioswidget</id>
+    <name>iOS Widget Integration</name>
+    <summary>Integrates iOS-style floating widget into main Nextcloud dashboard</summary>
+    <description>
+        This app integrates a beautiful iOS-style floating widget directly into the main Nextcloud dashboard.
+        The widget provides AI chatbot assistance, conversation management, and quick access to all Nextcloud features.
+        It appears on all pages and provides seamless integration with Talk, Files, Calendar, and other apps.
+    </description>
+    <version>1.0.0</version>
+    <licence>MIT</licence>
+    <author>Nextcloud iOS Widget Team</author>
+    <namespace>IOSWidget</namespace>
+    <category>integration</category>
+    <category>dashboard</category>
+    <dependencies>
+        <nextcloud min-version="24" max-version="28" />
+        <php min-version="7.4" />
+    </dependencies>
+    <types>
+        <filesystem />
+    </types>
+    <background-jobs>
+        <job>OCA\IOSWidget\BackgroundJobs\WidgetUpdater</job>
+    </background-jobs>
+</info>
+

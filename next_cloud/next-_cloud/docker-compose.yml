@@ -3,8 +3,8 @@ version: '3.8'
 services:
   nextcloud:
     image: nextcloud:latest
-    container_name: nextcloud-dev
-    restart: unless-stopped
+    container_name: nextcloud_main
+    restart: always
     ports:
       - "8080:80"
     volumes:
@@ -17,16 +17,17 @@ services:
       - MYSQL_PASSWORD=nextcloud_password
       - NEXTCLOUD_ADMIN_USER=admin
       - NEXTCLOUD_ADMIN_PASSWORD=admin123
-      - NEXTCLOUD_TRUSTED_DOMAINS=localhost 127.0.0.1
+      - NEXTCLOUD_TRUSTED_DOMAINS=localhost
+      - REDIS_HOST=redis
+      - REDIS_HOST_PASSWORD=redis_password
     depends_on:
       - db
-      - redis
 
   db:
     image: mariadb:10.11
-    container_name: nextcloud-db
-    restart: unless-stopped
-    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    container_name: nextcloud_db
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
     volumes:
       - db_data:/var/lib/mysql
     environment:
@@ -36,25 +37,10 @@ services:
       - MYSQL_USER=nextcloud
 
   redis:
-    image: redis:7-alpine
-    container_name: nextcloud-redis
-    restart: unless-stopped
+    image: redis:alpine
+    container_name: nextcloud_redis
+    restart: always
     command: redis-server --requirepass redis_password
-
-  talk:
-    image: nextcloud/talk:latest
-    container_name: nextcloud-talk
-    restart: unless-stopped
-    ports:
-      - "3478:3478/udp"
-      - "3478:3478/tcp"
-    environment:
-      - TALK_SIGNALING_SERVER_SECRET=your-signaling-secret
-      - TALK_SIGNALING_SERVER=nextcloud-talk
-      - TALK_SIGNALING_SERVER_PROTOCOL=http
-      - TALK_SIGNALING_SERVER_PORT=8080
-    depends_on:
-      - nextcloud
 
 volumes:
   nextcloud_data:

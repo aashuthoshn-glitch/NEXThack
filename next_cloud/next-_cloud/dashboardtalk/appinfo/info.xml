@@ -1,16 +1,16 @@
 <?xml version="1.0"?>
 <info>
 	<id>dashboardtalk</id>
-	<name>Dashboard Talk Widget</name>
-	<summary>Show Talk messages on the dashboard</summary>
-	<description>Simple dashboard widget that surfaces recent Talk messages at a glance.</description>
+	<name>Smart Talk - AI Chat & Groups</name>
+	<summary>AI-powered chat widget with group management</summary>
+	<description>Advanced dashboard widget featuring AI chatbot, group management, video calls, and real-time messaging for Nextcloud.</description>
 	<version>1.0.0</version>
 	<licence>agpl</licence>
-	<author>Your Name</author>
+	<author>Smart Talk Team</author>
 	<namespace>DashboardTalk</namespace>
 	<dependencies>
-		<nextcloud min-version="25" max-version="31"/>
-		<php min-version="8.0"/>
+		<nextcloud min-version="28" max-version="32"/>
+		<php min-version="8.1"/>
 	</dependencies>
 	<types>
 		<dashboard/>
@@ -18,11 +18,14 @@
 	<dashboard>
 		<widget>
 			<id>dashboardtalk_widget</id>
-			<name>Talk Messages</name>
+			<name>Smart Talk - AI Chat & Groups</name>
 			<order>10</order>
 			<icon>icon.svg</icon>
 		</widget>
 	</dashboard>
+	<background-jobs>
+		<job>OCA\DashboardTalk\BackgroundJob\UpdateWidget</job>
+	</background-jobs>
 </info>
 
 

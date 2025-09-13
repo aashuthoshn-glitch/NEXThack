@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextBot AI Assistant Demo</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .chat-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .message-bubble {
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .typing-indicator {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .quick-question {
+            transition: all 0.2s ease;
+        }
+        
+        .quick-question:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div id="app" class="chat-container max-w-4xl w-full p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                🤖 NextBot AI Assistant Demo
+            </h1>
+            <p class="text-xl text-gray-600 mb-6">
+                Intelligent chatbot with natural language processing
+            </p>
+        </div>
+
+        <!-- Chat Interface -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                        🤖
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">NextBot</h3>
+                        <p class="text-sm text-green-600">Online • AI Assistant</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="clearChat" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-all">
+                        Clear
+                    </button>
+                    <button @click="toggleBot" :class="botEnabled ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'" class="px-3 py-1 rounded-lg text-sm transition-all">
+                        {{ botEnabled ? 'Enabled' : 'Disabled' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="h-96 overflow-y-auto space-y-4 mb-4" ref="messagesContainer">
+                <div v-for="message in messages" :key="message.id" class="message-bubble">
+                    <div :class="message.isBot ? 'flex justify-start' : 'flex justify-end'">
+                        <div :class="message.isBot ? 'bg-gray-100' : 'bg-blue-500 text-white'" class="max-w-xs px-4 py-2 rounded-lg">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span v-if="message.isBot" class="text-sm font-medium">🤖 NextBot</span>
+                                <span v-else class="text-sm font-medium">You</span>
+                                <span class="text-xs opacity-75">{{ formatTime(message.timestamp) }}</span>
+                            </div>
+                            <p class="text-sm">{{ message.text }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Typing Indicator -->
+                <div v-if="isTyping" class="flex justify-start">
+                    <div class="bg-gray-100 px-4 py-2 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium">🤖 NextBot</span>
+                            <div class="typing-indicator flex gap-1">
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="flex gap-2">
+                <input
+                    v-model="newMessage"
+                    @keyup.enter="sendMessage"
+                    type="text"
+                    placeholder="Ask NextBot anything..."
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    :disabled="!botEnabled || isTyping"
+                />
+                <button
+                    @click="sendMessage"
+                    :disabled="!newMessage.trim() || !botEnabled || isTyping"
+                    class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+                >
+                    Send
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Questions -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">Quick Questions</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button
+                    v-for="question in quickQuestions"
+                    :key="question"
+                    @click="askQuestion(question)"
+                    class="quick-question p-3 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg text-left hover:shadow-md transition-all"
+                    :disabled="!botEnabled || isTyping"
+                >
+                    <span class="text-sm font-medium text-gray-700">{{ question }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bot Capabilities -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">NextBot Capabilities</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl mb-2">💬</div>
+                    <h4 class="font-semibold text-gray-800">Natural Language</h4>
+                    <p class="text-sm text-gray-600">Understands human language</p>
+                </div>
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl mb-2">🎯</div>
+                    <h4 class="font-semibold text-gray-800">Context Aware</h4>
+                    <p class="text-sm text-gray-600">Remembers conversation context</p>
+                </div>
+                <div class="text-center p-4 bg-purple-50 rounded-lg">
+                    <div class="text-2xl mb-2">⚡</div>
+                    <h4 class="font-semibold text-gray-800">Instant Response</h4>
+                    <p class="text-sm text-gray-600">Quick and accurate answers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const messages = ref([
+                    {
+                        id: 1,
+                        text: "Hello! I'm NextBot, your AI assistant! How can I help you today?",
+                        isBot: true,
+                        timestamp: Date.now() - 60000
+                    }
+                ]);
+                const newMessage = ref('');
+                const isTyping = ref(false);
+                const botEnabled = ref(true);
+                const messagesContainer = ref(null);
+
+                const quickQuestions = [
+                    "How do I create a group?",
+                    "How do I start a video call?",
+                    "What features are available?",
+                    "Who are the users?",
+                    "How do I add reactions?",
+                    "What's the tech stack?",
+                    "How do I manage users?",
+                    "What can you help me with?"
+                ];
+
+                const botResponses = {
+                    greetings: [
+                        "Hello! I'm NextBot, your AI assistant! How can I help you today?",
+                        "Hi there! I'm here to help with any questions you might have!",
+                        "Hey! Welcome to Nextcloud Talk! I'm NextBot, ready to assist!",
+                        "Greetings! I'm your AI assistant. What can I do for you?"
+                    ],
+                    help: [
+                        "I can help you with:\n• Creating groups\n• Managing conversations\n• Starting video calls\n• Finding users\n• General questions about Nextcloud Talk",
+                        "Here's what I can do:\n• Answer questions about features\n• Help with group management\n• Assist with technical issues\n• Provide tips and tricks",
+                        "I'm here to help! Ask me about:\n• How to use Nextcloud Talk\n• Group creation and management\n• Video calling features\n• User management"
+                    ],
+                    groupCreation: [
+                        "To create a group:\n1. Click the 'New Group' button\n2. Enter a group name\n3. Select members from the list\n4. Click 'Create Group'",
+                        "Creating groups is easy! Just click the '+' button in the header, give your group a name, select members, and you're done!",
+                        "Need help creating a group? Click the 'New Group' button, choose a name, pick your members, and hit create!"
+                    ],
+                    videoCall: [
+                        "To start a video call:\n1. Click the 📞 button on any message\n2. Or click 'Start Call' in the message actions\n3. Your browser will ask for camera/microphone permission",
+                        "Starting a call is simple! Just click the phone icon next to any message or use the call button in the message actions.",
+                        "Video calls are one click away! Look for the 📞 button on messages or in the message actions menu."
+                    ],
+                    users: [
+                        "Current users in the system:\n• Aashu (aashu123)\n• Admin (admin123)\n• Adithya (adithya123)\n• Dhanush (dhanush123)",
+                        "Here are the available users:\n• Aashu - Project Lead\n• Admin - System Administrator\n• Adithya - Developer\n• Dhanush - Designer",
+                        "The team consists of:\n• Aashu (Online)\n• Admin (Online)\n• Adithya (Offline)\n• Dhanush (Online)"
+                    ],
+                    features: [
+                        "Nextcloud Talk features:\n• Real-time messaging\n• Group conversations\n• Video/audio calls\n• File sharing\n• Emoji reactions\n• Online status\n• Message history",
+                        "Key features include:\n• Instant messaging\n• Group management\n• Video calling\n• File sharing\n• Emoji reactions\n• User presence\n• Search functionality",
+                        "Available features:\n• Chat messaging\n• Group creation\n• Video calls\n• File sharing\n• Reactions\n• Notifications\n• Mobile support"
+                    ],
+                    technical: [
+                        "Technical details:\n• Built with Vue.js 3\n• Uses Nextcloud Talk API\n• Real-time WebSocket connections\n• Docker containerized\n• Responsive design",
+                        "This is built with:\n• Vue.js for the frontend\n• Nextcloud for the backend\n• Docker for deployment\n• WebSocket for real-time updates",
+                        "Tech stack:\n• Frontend: Vue.js, Tailwind CSS\n• Backend: Nextcloud, PHP\n• Database: MariaDB\n• Cache: Redis"
+                    ],
+                    encouragement: [
+                        "You're doing great! This is an amazing hackathon project! 🚀",
+                        "Keep up the excellent work! This project is really impressive! 💪",
+                        "Wow! This is definitely a 10/10 hackathon project! 🏆",
+                        "Fantastic work! The judges are going to love this! ⭐"
+                    ],
+                    default: [
+                        "I'm not sure I understand that. Can you ask me about groups, video calls, users, or features?",
+                        "Hmm, I didn't catch that. Try asking about creating groups, starting calls, or user management!",
+                        "I'm still learning! Ask me about Nextcloud Talk features, group creation, or how to use the system.",
+                        "Not sure about that one. I can help with groups, calls, users, or general questions about the platform!"
+                    ]
+                };
+
+                const processMessage = (message) => {
+                    const lowerMessage = message.toLowerCase().trim();
+                    
+                    if (isGreeting(lowerMessage)) return getRandomResponse('greetings');
+                    if (isHelpRequest(lowerMessage)) return getRandomResponse('help');
+                    if (isGroupRelated(lowerMessage)) return getRandomResponse('groupCreation');
+                    if (isCallRelated(lowerMessage)) return getRandomResponse('videoCall');
+                    if (isUserRelated(lowerMessage)) return getRandomResponse('users');
+                    if (isFeatureRelated(lowerMessage)) return getRandomResponse('features');
+                    if (isTechnicalQuestion(lowerMessage)) return getRandomResponse('technical');
+                    if (isEncouragement(lowerMessage)) return getRandomResponse('encouragement');
+                    
+                    return getRandomResponse('default');
+                };
+
+                const isGreeting = (message) => {
+                    const greetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'greetings', 'howdy'];
+                    return greetings.some(greeting => message.includes(greeting));
+                };
+
+                const isHelpRequest = (message) => {
+                    const helpWords = ['help', 'assist', 'support', 'guide', 'how to', 'what can', 'what do', 'commands'];
+                    return helpWords.some(word => message.includes(word));
+                };
+
+                const isGroupRelated = (message) => {
+                    const groupWords = ['group', 'create group', 'new group', 'add group', 'group chat', 'team chat'];
+                    return groupWords.some(word => message.includes(word));
+                };
+
+                const isCallRelated = (message) => {
+                    const callWords = ['call', 'video', 'audio', 'meeting', 'conference', 'phone', 'start call', 'video call'];
+                    return callWords.some(word => message.includes(word));
+                };
+
+                const isUserRelated = (message) => {
+                    const userWords = ['user', 'users', 'people', 'team', 'members', 'who', 'aashu', 'admin', 'adithya', 'dhanush'];
+                    return userWords.some(word => message.includes(word));
+                };
+
+                const isFeatureRelated = (message) => {
+                    const featureWords = ['feature', 'features', 'what can', 'capabilities', 'functions', 'options', 'tools'];
+                    return featureWords.some(word => message.includes(word));
+                };
+
+                const isTechnicalQuestion = (message) => {
+                    const techWords = ['technical', 'tech', 'built', 'technology', 'stack', 'api', 'code', 'development'];
+                    return techWords.some(word => message.includes(word));
+                };
+
+                const isEncouragement = (message) => {
+                    const encouragementWords = ['great', 'awesome', 'amazing', 'excellent', 'good job', 'well done', 'impressive', 'fantastic'];
+                    return encouragementWords.some(word => message.includes(word));
+                };
+
+                const getRandomResponse = (category) => {
+                    const responses = botResponses[category] || botResponses.default;
+                    return responses[Math.floor(Math.random() * responses.length)];
+                };
+
+                const sendMessage = async () => {
+                    if (!newMessage.value.trim() || !botEnabled.value) return;
+                    
+                    const messageText = newMessage.value.trim();
+                    newMessage.value = '';
+                    
+                    // Add user message
+                    messages.value.push({
+                        id: Date.now(),
+                        text: messageText,
+                        isBot: false,
+                        timestamp: Date.now()
+                    });
+                    
+                    await nextTick();
+                    scrollToBottom();
+                    
+                    if (botEnabled.value) {
+                        isTyping.value = true;
+                        
+                        // Simulate bot thinking time
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        
+                        // Get bot response
+                        const botResponse = processMessage(messageText);
+                        messages.value.push({
+                            id: Date.now() + 1,
+                            text: botResponse,
+                            isBot: true,
+                            timestamp: Date.now()
+                        });
+                        
+                        isTyping.value = false;
+                        await nextTick();
+                        scrollToBottom();
+                    }
+                };
+
+                const askQuestion = (question) => {
+                    newMessage.value = question;
+                    sendMessage();
+                };
+
+                const clearChat = () => {
+                    messages.value = [{
+                        id: 1,
+                        text: "Hello! I'm NextBot, your AI assistant! How can I help you today?",
+                        isBot: true,
+                        timestamp: Date.now()
+                    }];
+                };
+
+                const toggleBot = () => {
+                    botEnabled.value = !botEnabled.value;
+                };
+
+                const formatTime = (timestamp) => {
+                    const date = new Date(timestamp);
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                };
+
+                const scrollToBottom = () => {
+                    if (messagesContainer.value) {
+                        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+                    }
+                };
+
+                return {
+                    messages,
+                    newMessage,
+                    isTyping,
+                    botEnabled,
+                    messagesContainer,
+                    quickQuestions,
+                    sendMessage,
+                    askQuestion,
+                    clearChat,
+                    toggleBot,
+                    formatTime
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

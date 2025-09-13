@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nextcloud Talk - Advanced Chat Widget Demo</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .demo-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .status-offline {
+            background: #f44336;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="demo-container max-w-6xl w-full p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                🚀 Nextcloud Talk - Advanced Chat Widget
+            </h1>
+            <p class="text-xl text-gray-600 mb-6">
+                A 10/10 Hackathon Project with Real-time Features
+            </p>
+            
+            <!-- User Status Display -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-2xl font-semibold mb-4">👥 User Status</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="flex items-center justify-center p-3 bg-green-50 rounded-lg">
+                        <span class="status-indicator status-online"></span>
+                        <span class="font-medium">Aashu</span>
+                    </div>
+                    <div class="flex items-center justify-center p-3 bg-green-50 rounded-lg">
+                        <span class="status-indicator status-online"></span>
+                        <span class="font-medium">Admin</span>
+                    </div>
+                    <div class="flex items-center justify-center p-3 bg-red-50 rounded-lg">
+                        <span class="status-indicator status-offline"></span>
+                        <span class="font-medium">Adithya</span>
+                    </div>
+                    <div class="flex items-center justify-center p-3 bg-green-50 rounded-lg">
+                        <span class="status-indicator status-online"></span>
+                        <span class="font-medium">Dhanush</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="feature-card">
+                <div class="text-4xl mb-3">💬</div>
+                <h3 class="text-xl font-bold mb-2">Real-time Chat</h3>
+                <p class="text-sm opacity-90">Instant messaging with live updates and notifications</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="text-4xl mb-3">👥</div>
+                <h3 class="text-xl font-bold mb-2">Group Creation</h3>
+                <p class="text-sm opacity-90">Create and manage group conversations easily</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="text-4xl mb-3">📞</div>
+                <h3 class="text-xl font-bold mb-2">Video/Audio Calls</h3>
+                <p class="text-sm opacity-90">Start calls directly from chat messages</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="text-4xl mb-3">🟢</div>
+                <h3 class="text-xl font-bold mb-2">Online Status</h3>
+                <p class="text-sm opacity-90">Real-time online/offline indicators</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="text-4xl mb-3">😊</div>
+                <h3 class="text-xl font-bold mb-2">Emoji Reactions</h3>
+                <p class="text-sm opacity-90">React to messages with emojis</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="text-4xl mb-3">🔔</div>
+                <h3 class="text-xl font-bold mb-2">Smart Notifications</h3>
+                <p class="text-sm opacity-90">Real-time notifications for all activities</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="text-4xl mb-3">🤖</div>
+                <h3 class="text-xl font-bold mb-2">AI Chatbot</h3>
+                <p class="text-sm opacity-90">Intelligent assistant with natural language processing</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="text-4xl mb-3">💬</div>
+                <h3 class="text-xl font-bold mb-2">Quick Questions</h3>
+                <p class="text-sm opacity-90">Pre-built questions for instant help</p>
+            </div>
+        </div>
+
+        <!-- Main Chat Widget Demo -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold mb-6 text-center">🎯 Live Chat Widget Demo</h2>
+            
+            <!-- Mock Chat Widget -->
+            <div id="app" class="max-w-4xl mx-auto">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between text-white">
+                        <h3 class="text-lg font-semibold flex items-center gap-2">
+                            💬 Nextcloud Talk
+                            <span class="bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs">
+                                3 online
+                            </span>
+                        </h3>
+                        <div class="flex gap-2">
+                            <button class="bg-white bg-opacity-20 p-2 rounded-lg hover:bg-opacity-30 transition-all">
+                                🔄
+                            </button>
+                            <button class="bg-white bg-opacity-20 p-2 rounded-lg hover:bg-opacity-30 transition-all">
+                                ➕
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div class="space-y-4 max-h-96 overflow-y-auto">
+                    <div class="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                A
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-semibold text-gray-800">Aashu</span>
+                                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                    <span class="text-xs text-gray-500">2m ago</span>
+                                </div>
+                                <p class="text-gray-700">Hey everyone! How's the hackathon project going? 🚀</p>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">👍 2</span>
+                                    <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">❤️ 1</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                D
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-semibold text-gray-800">Dhanush</span>
+                                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                    <span class="text-xs text-gray-500">1m ago</span>
+                                </div>
+                                <p class="text-gray-700">Great progress! The real-time features are working perfectly! 🎉</p>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">😂 3</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                A
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-semibold text-gray-800">Admin</span>
+                                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                    <span class="text-xs text-gray-500">30s ago</span>
+                                </div>
+                                <p class="text-gray-700">Can we schedule a video call to discuss the final presentation?</p>
+                                <div class="flex gap-2 mt-2">
+                                    <button class="bg-green-500 text-white px-3 py-1 rounded-full text-xs hover:bg-green-600 transition-all">
+                                        📞 Start Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 mt-4">
+                    <button class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-all flex items-center justify-center gap-2">
+                        ➕ New Group
+                    </button>
+                    <button class="flex-1 bg-purple-500 text-white py-3 rounded-lg font-semibold hover:bg-purple-600 transition-all flex items-center justify-center gap-2">
+                        💬 Open Talk
+                    </button>
+                </div>
+                
+                <!-- Chatbot Demo Section -->
+                <div class="mt-6 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg p-4 text-white">
+                    <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                        🤖 NextBot AI Assistant
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="bg-white bg-opacity-20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">U</span>
+                                <span class="font-medium">You</span>
+                                <span class="text-xs opacity-75">2m ago</span>
+                            </div>
+                            <p class="text-sm">How do I create a group?</p>
+                        </div>
+                        <div class="bg-white bg-opacity-20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">🤖</span>
+                                <span class="font-medium">NextBot</span>
+                                <span class="text-xs opacity-75">1m ago</span>
+                            </div>
+                            <p class="text-sm">To create a group: 1. Click the 'New Group' button 2. Enter a group name 3. Select members from the list 4. Click 'Create Group'</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <input type="text" placeholder="Ask NextBot anything..." class="flex-1 px-3 py-2 rounded-lg text-gray-800 text-sm" value="What features are available?">
+                        <button class="bg-white text-green-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100 transition-all">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Features -->
+        <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold mb-6 text-center">⚡ Technical Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 text-blue-600">Frontend Technologies</h3>
+                    <ul class="space-y-2 text-gray-700">
+                        <li>✅ Vue.js 3 with Composition API</li>
+                        <li>✅ Real-time WebSocket connections</li>
+                        <li>✅ AI-powered chatbot with NLP</li>
+                        <li>✅ Responsive design with Tailwind CSS</li>
+                        <li>✅ Progressive Web App features</li>
+                        <li>✅ Dark mode support</li>
+                        <li>✅ Mobile-first approach</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 text-green-600">Backend Integration</h3>
+                    <ul class="space-y-2 text-gray-700">
+                        <li>✅ Nextcloud Talk API integration</li>
+                        <li>✅ Docker containerization</li>
+                        <li>✅ MariaDB database</li>
+                        <li>✅ Redis caching</li>
+                        <li>✅ RESTful API endpoints</li>
+                        <li>✅ Real-time message synchronization</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Credentials -->
+        <div class="mt-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg shadow-lg p-6 text-white">
+            <h2 class="text-2xl font-semibold mb-4 text-center">🔐 Login Credentials</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white bg-opacity-20 rounded-lg p-4">
+                    <h3 class="font-semibold mb-2">Username: aashu</h3>
+                    <p class="text-sm opacity-90">Password: aashu123</p>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-lg p-4">
+                    <h3 class="font-semibold mb-2">Username: admin</h3>
+                    <p class="text-sm opacity-90">Password: admin123</p>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-lg p-4">
+                    <h3 class="font-semibold mb-2">Username: adithya</h3>
+                    <p class="text-sm opacity-90">Password: adithya123</p>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-lg p-4">
+                    <h3 class="font-semibold mb-2">Username: dhanush</h3>
+                    <p class="text-sm opacity-90">Password: dhanush123</p>
+                </div>
+            </div>
+            <div class="text-center mt-4">
+                <a href="http://localhost:8080" target="_blank" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all inline-block">
+                    🚀 Access Nextcloud Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-gray-600">
+            <p class="text-lg font-semibold">🏆 Hackathon Ready - 10/10 Project</p>
+            <p class="text-sm">Built with ❤️ for Nextcloud Talk Integration</p>
+        </div>
+    </div>
+
+    <script>
+        // Simulate real-time updates
+        setInterval(() => {
+            const messages = document.querySelectorAll('.bg-gray-50');
+            if (messages.length > 0) {
+                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                randomMessage.style.transform = 'scale(1.02)';
+                setTimeout(() => {
+                    randomMessage.style.transform = 'scale(1)';
+                }, 200);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
