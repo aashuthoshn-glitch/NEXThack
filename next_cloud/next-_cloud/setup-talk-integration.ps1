@@ -92,3 +92,5 @@ Write-Host "• Ensure all containers are running: docker ps" -ForegroundColor W
 
 Write-Host "`n✨ Enjoy your integrated Smart Talk experience!" -ForegroundColor Green
 Read-Host "`nPress Enter to continue..."
+
+

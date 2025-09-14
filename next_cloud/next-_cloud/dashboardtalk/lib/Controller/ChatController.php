@@ -253,3 +253,5 @@ class ChatController extends Controller {
         return $defaultResponses[array_rand($defaultResponses)];
     }
 }
+
+

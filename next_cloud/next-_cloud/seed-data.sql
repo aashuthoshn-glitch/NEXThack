@@ -30,3 +30,5 @@ INSERT INTO oc_talk_messages (object_id, actor_id, actor_display_name, actor_typ
 ('project_alpha', 'aashu', 'Aashu', 'users', 'The backend integration looks solid. Great work!', 'comment', UNIX_TIMESTAMP() - 14400, 1, NULL),
 ('admin_direct', 'admin', 'admin', 'users', 'This is a direct message between admin and other users.', 'comment', UNIX_TIMESTAMP() - 259200, 1, NULL),
 ('admin_direct', 'aashu', 'Aashu', 'users', 'Got it! The direct messaging is working perfectly.', 'comment', UNIX_TIMESTAMP() - 252000, 1, NULL);
+
+

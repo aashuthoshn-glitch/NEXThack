@@ -43,3 +43,5 @@ Write-Host ""
 
 Write-Host "Opening dashboard in browser..." -ForegroundColor Yellow
 Start-Process "http://localhost:8080"
+
+

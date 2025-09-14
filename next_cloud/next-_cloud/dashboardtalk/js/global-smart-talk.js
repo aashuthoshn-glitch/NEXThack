@@ -530,3 +530,5 @@
         console.log('Global Smart Talk Widget initialized successfully!');
     }
 })();
+
+

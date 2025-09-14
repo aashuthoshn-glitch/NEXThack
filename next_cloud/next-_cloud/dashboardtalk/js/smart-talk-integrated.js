@@ -944,3 +944,5 @@
         console.log('Smart Talk Integrated Widget initialized successfully!');
     }
 })();
+
+

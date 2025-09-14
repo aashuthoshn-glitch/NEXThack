@@ -722,3 +722,5 @@
         console.log('Global Smart Talk Widget v2 initialized successfully!');
     }
 })();
+
+

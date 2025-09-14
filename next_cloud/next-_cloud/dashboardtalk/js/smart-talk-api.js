@@ -126,3 +126,5 @@ class SmartTalkAPI {
 
 // Export for global use
 window.SmartTalkAPI = SmartTalkAPI;
+
+

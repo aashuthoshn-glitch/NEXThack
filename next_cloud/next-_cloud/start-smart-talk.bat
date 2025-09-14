@@ -41,3 +41,5 @@ echo Press any key to open the dashboard...
 pause > nul
 
 start http://localhost:8080
+
+
