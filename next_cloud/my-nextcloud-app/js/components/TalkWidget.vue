@@ -1,5 +1,5 @@
 <template>
-    <div v-if="!closed" class="chat-widget" :class="{ embedded, minimized }" role="region" aria-label="SmartTalk widget">
+    <div v-if="!closed" class="chat-widget" :class="{ embedded, minimized, meeting: showMeeting }" role="region" aria-label="SmartTalk widget">
 		<div class="header">
 			<div class="title">
 				<div class="header-icon">🤖</div>
@@ -10,8 +10,8 @@
 			</div>
 			<!-- Controls on the right: minimize and close -->
 			<div class="header-controls">
-				<button class="icon-btn" @click="minimized = !minimized" :title="minimized ? 'Expand' : 'Minimize'">−</button>
-				<button class="icon-btn" @click="closed = true" title="Close">×</button>
+                <button class="icon-btn" @click="minimizeWidget" :title="minimized ? 'Expand' : 'Minimize'">−</button>
+				<button class="icon-btn" @click="closeWidget" title="Close">×</button>
 			</div>
 		</div>
 
@@ -31,7 +31,7 @@
 			</select>
             <div class="toolbar-actions" v-if="activeTab==='talk'">
                 <button class="btn" @click="toggleCreate">➕ New group</button>
-                <button class="btn" @click="toggleMeeting">📞 Start meeting</button>
+                <button class="btn" @click="toggleMeetingPicker">📞 Start meeting</button>
             </div>
 		</div>
 
@@ -87,21 +87,38 @@
         <!-- Add participants dropdown appears after group creation -->
         <AddParticipantsDropdown v-if="showParticipants" :room-id="lastCreatedRoomId" :participants="['admin','aashu','adithya','dhanush']" @done="() => { showParticipants = false; fetchTalk() }" />
 
-        <!-- Inline meeting overlay (iframe) -->
+        <!-- Meeting room picker -->
+        <div v-if="showMeetingPicker" class="panel">
+            <select v-model="meetingRoomToken" class="panel-input">
+                <option v-for="r in rooms" :key="r.token" :value="r.token">{{ r.displayName }}</option>
+            </select>
+            <div class="panel-actions">
+                <button class="btn" @click="startMeeting">Start</button>
+                <button class="btn" @click="toggleMeetingPicker">Cancel</button>
+            </div>
+        </div>
+
+        <!-- In-widget meeting overlay (Talk-only UI) -->
         <div v-if="showMeeting" class="overlay">
             <div class="overlay-inner">
                 <div class="overlay-bar">
                     <span>Talk meeting</span>
                     <button class="btn" @click="toggleMeeting">Close</button>
                 </div>
-                <iframe :src="`/apps/spreed/#/room/${encodeURIComponent(talkRoomToken)}`" class="overlay-frame"></iframe>
+                <iframe
+                    ref="meetingFrame"
+                    :src="meetingSrc"
+                    class="overlay-frame"
+                    allow="camera; microphone; display-capture; autoplay; fullscreen"
+                    @load="onMeetingLoaded"
+                ></iframe>
             </div>
         </div>
 	</div>
 	</div>
 </template>
 <script setup>
-import { ref, nextTick, onMounted, defineProps } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, defineProps, computed } from 'vue'
 import AddParticipantsDropdown from './AddParticipantsDropdown.vue'
 const props = defineProps({ embedded: { type: Boolean, default: false } })
 const messages = ref([])
@@ -116,6 +133,9 @@ const rooms = ref([])
 const showCreate = ref(false)
 const newGroupName = ref('')
 const showMeeting = ref(false)
+const showMeetingPicker = ref(false)
+const meetingRoomToken = ref('')
+const meetingFrame = ref(null)
 const lastCreatedRoomId = ref('')
 const showParticipants = ref(false)
 // Weather state
@@ -332,13 +352,54 @@ const submitCreate = async () => {
   showCreate.value = false
   lastCreatedRoomId.value = roomId
   showParticipants.value = true
+  // Inform global notification service to refresh room subscriptions
+  try { (window.SmartTalkBus || new EventTarget()).dispatchEvent(new CustomEvent('smartTalk:roomsChanged')) } catch {}
 }
 
 // Start meeting: create ephemeral conversation link and open in new tab
 const toggleMeeting = () => {
-  if (!talkRoomToken.value) { showToast('Select a room first'); return }
   showMeeting.value = !showMeeting.value
+  try { window.SmartTalkMeetingOpen = !!showMeeting.value } catch {}
+  try { (window.SmartTalkBus || new EventTarget()).dispatchEvent(new CustomEvent(showMeeting.value ? 'smartTalk:meetingOpen' : 'smartTalk:meetingClose')) } catch {}
 }
+const toggleMeetingPicker = () => {
+  // default selected to current room, or first available
+  if (!meetingRoomToken.value) meetingRoomToken.value = (talkRoomToken.value || rooms.value?.[0]?.token || '')
+  showMeetingPicker.value = !showMeetingPicker.value
+}
+const startMeeting = () => {
+  if (!meetingRoomToken.value) { showToast('Select a group'); return }
+  showMeetingPicker.value = false
+  showMeeting.value = true
+  try { window.SmartTalkMeetingOpen = true } catch {}
+  try { (window.SmartTalkBus || new EventTarget()).dispatchEvent(new CustomEvent('smartTalk:meetingOpen')) } catch {}
+}
+
+// Ensure only Talk app is visible inside iframe by deep-linking to room route
+const onMeetingLoaded = () => {
+  try {
+    const f = meetingFrame.value
+    if (!f || !f.contentWindow) return
+    const doc = f.contentWindow.document
+    const css = `
+      header, .app-navigation, .app-menu, .app-settings, .unified-search, .app-sidebar-header { display: none !important; }
+      #app, #content, .app-content { top: 0 !important; }
+    `
+    const style = doc.createElement('style')
+    style.type = 'text/css'
+    style.appendChild(doc.createTextNode(css))
+    doc.head && doc.head.appendChild(style)
+  } catch {}
+}
+
+// Prefer dedicated call route if available; otherwise embed Talk SPA route with embedded hint
+const meetingSrc = computed(() => {
+  const token = encodeURIComponent(meetingRoomToken.value || talkRoomToken.value || '')
+  if (!token) return ''
+  const baseCall = (window?.OC?.generateUrl ? window.OC.generateUrl(`/call/${token}`) : `/call/${token}`)
+  const talkSpa = (window?.OC?.generateUrl ? window.OC.generateUrl('/apps/spreed/') : '/apps/spreed/') + `?embedded=1#/room/${token}`
+  return baseCall || talkSpa
+})
 
 // Floating notification
 const showToast = (text) => {
@@ -354,11 +415,39 @@ const showToast = (text) => {
   setTimeout(() => { el.style.opacity = '0' }, 4000)
 }
 
+const minimizeWidget = () => {
+  minimized.value = !minimized.value
+  try {
+    const mount = document.getElementById('talk-widget-mount')
+    if (!mount) return
+    if (minimized.value) {
+      mount.style.transform = 'translateY(120%)'
+      mount.style.opacity = '0'
+      window.SmartTalkOpen = false
+    } else {
+      mount.style.transform = 'translateY(0)'
+      mount.style.opacity = '1'
+      window.SmartTalkOpen = true
+    }
+  } catch {}
+}
+
 // Polling
 onMounted(() => {
   fetchRooms(); fetchTalk()
   setInterval(fetchTalk, 5000)
+  try {
+    const bus = (window.SmartTalkBus = (window.SmartTalkBus || new EventTarget()))
+    const onOpen = () => { minimized.value = false }
+    const onClose = () => { /* keep minimized state; UI already hidden by shell */ }
+    bus.addEventListener('smartTalk:widgetOpen', onOpen)
+    bus.addEventListener('smartTalk:widgetClose', onClose)
+  } catch {}
 })
+
+const closeWidget = () => { closed.value = true; try { window.SmartTalkOpen = false } catch {} }
+
+onBeforeUnmount(() => { try { window.SmartTalkOpen = false } catch {} })
 
 // ===== AI (Gemini via server proxy) =====
 const aiContainer = ref(null)
@@ -408,9 +497,10 @@ const sendAI = async () => {
 const retryAI = () => { if (aiMessages.value.length) { const last = aiMessages.value.pop(); aiInput.value = last?.text || ''; sendAI() } }
 </script>
 <style scoped>
-.chat-widget { width: 360px; border-radius: 16px; padding: 14px; background: var(--color-main-background); color: var(--color-main-text); border: 1px solid var(--color-border); box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.chat-widget { width: 380px; min-height: 420px; border-radius: 16px; padding: 14px; background: var(--color-main-background); color: var(--color-main-text); border: 1px solid var(--color-border); box-shadow: 0 8px 24px rgba(0,0,0,.15); }
 .chat-widget.embedded { width: 100%; }
 .chat-widget.minimized { padding-bottom: 10px }
+.chat-widget.meeting { width: min(1020px, 95vw); height: min(720px, 88vh); display: flex; flex-direction: column; }
 .chat-widget h2 { color: var(--color-main-text); margin: 0; }
 .chat-widget p { color: var(--color-text-maxcontrast); margin: 0; }
 .header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
@@ -418,7 +508,7 @@ const retryAI = () => { if (aiMessages.value.length) { const last = aiMessages.v
 .header-controls { display:flex; gap:8px }
 .icon-btn { width:36px; height:36px; border-radius:10px; border:1px solid var(--color-border); background: linear-gradient(135deg,#6a5acd,#7c3aed); color:#fff; font-weight:700; cursor:pointer }
 .icon-btn:hover { filter: brightness(1.05) }
-.messages-area { max-height: 480px; overflow-y: auto; padding-right:6px }
+.messages-area { max-height: 520px; overflow-y: auto; padding-right:6px }
 .message-row { display:flex; gap:8px; margin:8px 0; align-items:flex-end }
 .message-row.self { flex-direction: row-reverse }
 .avatar { width:28px; height:28px; border-radius:50%; background: var(--color-primary); color: var(--color-primary-text); display:flex; align-items:center; justify-content:center; font-weight:700 }
@@ -447,7 +537,7 @@ const retryAI = () => { if (aiMessages.value.length) { const last = aiMessages.v
 .panel-input { flex:1; padding:8px 10px; border-radius:10px; border:1px solid var(--color-border); background: var(--color-background-darker); color: var(--color-main-text) }
 .panel-actions { display:flex; gap:8px }
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 10000; display:flex; align-items:center; justify-content:center }
-.overlay-inner { width: min(1100px, 96%); height: min(720px, 86%); background: var(--color-main-background); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); display:flex; flex-direction: column }
+.overlay-inner { width: 100%; height: 100%; background: var(--color-main-background); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); display:flex; flex-direction: column }
 .overlay-bar { display:flex; align-items:center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--color-border) }
 .overlay-frame { flex:1; border: 0; border-radius: 0 0 12px 12px; width: 100% }
 </style>
