@@ -3,7 +3,7 @@ services:
     image: nextcloud:apache
     container_name: nextcloud-dev
     ports:
-      - "8080:80"
+      - "8081:80"
     volumes:
       - nextcloud_data:/var/www/html
       - ./my-nextcloud-app:/var/www/html/custom_apps/my-nextcloud-app

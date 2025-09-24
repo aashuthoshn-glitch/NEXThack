@@ -1,57 +1,123 @@
 <template>
-	<div class="chat-widget">
+    <div v-if="!closed" class="chat-widget" :class="{ embedded, minimized }" role="region" aria-label="SmartTalk widget">
 		<div class="header">
 			<div class="title">
-				<div class="header-icon">💬</div>
+				<div class="header-icon">🤖</div>
 				<div class="header-text">
-					<h2>At a Glance</h2>
-					<p>{{ selectedRoomName || 'Quick access' }}</p>
+					<h2>Smart Talk</h2>
+					<p>{{ selectedRoomName || 'Conversations & AI Assistant' }}</p>
 				</div>
 			</div>
-			<div class="weather" :title="weatherTitle">
-				<span v-if="weatherLoading">⛅ …</span>
-				<span v-else>{{ weatherTemp }}° • {{ weatherIcon }}</span>
+			<!-- Controls on the right: minimize and close -->
+			<div class="header-controls">
+				<button class="icon-btn" @click="minimized = !minimized" :title="minimized ? 'Expand' : 'Minimize'">−</button>
+				<button class="icon-btn" @click="closed = true" title="Close">×</button>
 			</div>
 		</div>
 
-		<div class="shortcuts">
-			<button class="shortcut" @click="goActivities" title="Open Activities">🗂️ Activities</button>
-			<button class="shortcut" @click="goTalk" title="Open Talk">💬 Talk</button>
-			<select v-if="activeView==='talk'" class="room-select" v-model="selectedRoomToken" @change="onSelectRoom" :title="'Select conversation'">
+		<!-- Body collapses when minimized -->
+		<div v-if="!minimized">
+		<!-- Tabs -->
+        <div class="tabs" role="tablist">
+            <button :class="['tab', activeTab==='talk' && 'active']" role="tab" :aria-selected="activeTab==='talk'" @click="activeTab='talk'">💬 Smart Talk</button>
+            <button :class="['tab', activeTab==='ai' && 'active']" role="tab" :aria-selected="activeTab==='ai'" @click="activeTab='ai'">🤖 AI</button>
+		</div>
+
+		<!-- Controls row -->
+        <div class="toolbar">
+            <select v-if="activeTab==='talk'" class="room-select" v-model="selectedRoomToken" @change="onSelectRoom" :title="'Select conversation'">
 				<option disabled value="">Select a conversation…</option>
 				<option v-for="r in rooms" :key="r.token" :value="r.token">{{ r.displayName }}</option>
 			</select>
+            <div class="toolbar-actions" v-if="activeTab==='talk'">
+                <button class="btn" @click="toggleCreate">➕ New group</button>
+                <button class="btn" @click="toggleMeeting">📞 Start meeting</button>
+            </div>
 		</div>
 
+        <!-- Inline create group panel -->
+        <div v-if="showCreate" class="panel">
+            <input v-model="newGroupName" class="panel-input" placeholder="Group name" />
+            <div class="panel-actions">
+                <button class="btn" @click="submitCreate">Create</button>
+                <button class="btn" @click="toggleCreate">Cancel</button>
+            </div>
+        </div>
+
 		<!-- Talk view -->
-		<div v-if="activeView==='talk'" class="messages-area" ref="messagesContainer">
-			<div v-for="message in messages" :key="message.id" class="message-bubble" :class="{ self: isSelf(message) }">
-				<div class="meta">
-					<span class="user-name">{{ message.actorDisplayName }}</span>
-					<span class="time">{{ formatTime(message.timestamp) }}</span>
-				</div>
-				<div class="message-text">{{ message.message }}</div>
-			</div>
+        <div v-if="activeTab==='talk'" class="messages-area" ref="messagesContainer">
+            <div v-for="message in messages" :key="message.id" class="message-row" :class="{ self: isSelf(message) }">
+                <div class="avatar" :title="message.actorDisplayName">{{ (message.actorDisplayName || '?').charAt(0).toUpperCase() }}</div>
+                <div class="bubble">
+                    <div class="meta">
+                        <span class="user-name">{{ message.actorDisplayName }}</span>
+                        <span class="time">{{ formatTime(message.timestamp) }}</span>
+                    </div>
+                    <div class="message-text">{{ message.message }}</div>
+                </div>
+            </div>
+			<div v-if="messages.length===0" class="empty-hint">No messages yet.</div>
 		</div>
-		<div v-if="activeView==='talk'" class="message-input-area">
-			<input v-model="newMessage" @keyup.enter="sendMessage" type="text" class="message-input" placeholder="Type your message here..." />
+		<div v-if="activeTab==='talk'" class="message-input-area">
+			<input v-model="newMessage" @keyup.enter="sendMessage" type="text" class="message-input" placeholder="Type your message..." />
 			<button class="send-button" @click="sendMessage">Send</button>
 		</div>
 
-		<!-- Activities view (compact list from OCS) -->
-		<div v-if="activeView==='activities'" class="messages-area">
-			<div class="message-bubble" v-for="a in activities" :key="a.id">{{ a.subject }}</div>
+		<!-- AI view -->
+        <div v-if="activeTab==='ai'" class="messages-area" ref="aiContainer">
+            <div v-for="(m,i) in aiMessages" :key="i" class="message-row" :class="{ self: m.role==='user' }">
+                <div class="avatar" :title="m.role==='user' ? 'You' : 'Gemini'">{{ m.role==='user' ? 'Y' : 'G' }}</div>
+                <div class="bubble">
+                    <div class="meta">
+                        <span class="user-name">{{ m.role==='user' ? 'You' : 'Gemini' }}</span>
+                    </div>
+                    <div class="message-text" v-html="renderMarkdown(m.text)"></div>
+                </div>
+            </div>
+            <div v-if="aiLoading" class="skeleton">
+                <div class="line w80"></div>
+                <div class="line w60"></div>
+            </div>
+            <div v-if="aiError" class="error">{{ aiError }} <button class="btn" @click="retryAI">Retry</button></div>
 		</div>
+		<div v-if="activeTab==='ai'" class="message-input-area">
+			<input v-model="aiInput" @keyup.enter="sendAI" type="text" class="message-input" placeholder="Ask Gemini about Nextcloud or anything..." />
+			<button class="send-button" :disabled="aiLoading" @click="sendAI">Send</button>
+		</div>
+        <!-- Add participants dropdown appears after group creation -->
+        <AddParticipantsDropdown v-if="showParticipants" :room-id="lastCreatedRoomId" :participants="['admin','aashu','adithya','dhanush']" @done="() => { showParticipants = false; fetchTalk() }" />
+
+        <!-- Inline meeting overlay (iframe) -->
+        <div v-if="showMeeting" class="overlay">
+            <div class="overlay-inner">
+                <div class="overlay-bar">
+                    <span>Talk meeting</span>
+                    <button class="btn" @click="toggleMeeting">Close</button>
+                </div>
+                <iframe :src="`/apps/spreed/#/room/${encodeURIComponent(talkRoomToken)}`" class="overlay-frame"></iframe>
+            </div>
+        </div>
+	</div>
 	</div>
 </template>
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, defineProps } from 'vue'
+import AddParticipantsDropdown from './AddParticipantsDropdown.vue'
+const props = defineProps({ embedded: { type: Boolean, default: false } })
 const messages = ref([])
 const newMessage = ref('')
 const selectedRoomName = ref('General')
 const messagesContainer = ref(null)
+const activeTab = ref('talk') // 'talk' | 'ai'
+const minimized = ref(false)
+const closed = ref(false)
 const selectedRoomToken = ref(localStorage.getItem('talk_room_token') || '')
 const rooms = ref([])
+const showCreate = ref(false)
+const newGroupName = ref('')
+const showMeeting = ref(false)
+const lastCreatedRoomId = ref('')
+const showParticipants = ref(false)
 // Weather state
 const weatherTemp = ref('--')
 const weatherIcon = ref('⛅')
@@ -80,11 +146,6 @@ const fetchWeather = async () => {
 		weatherLoading.value = false
 	}
 }
-// sendMessage is defined later to go through Talk API
-// Do not redirect; keep the user on the current page and open the in-widget views
-const activeView = ref('talk') // 'talk' | 'activities'
-const goActivities = () => { activeView.value = 'activities' }
-const goTalk = () => { activeView.value = 'talk' }
 onMounted(() => { fetchWeather(); setInterval(fetchWeather, 600000) })
 
 // ===== Nextcloud OCS helpers =====
@@ -101,6 +162,12 @@ const ocsHeaders = () => ({
   'requesttoken': getRequestToken(),
 })
 
+const ocsUrl = (path) => {
+  // Ensure we always hit the correct base and request JSON
+  const base = (window?.OC?.generateUrl ? window.OC.generateUrl(path) : path)
+  return base.includes('?') ? `${base}&format=json` : `${base}?format=json`
+}
+
 // ===== Talk integration (basic) =====
 const talkRoomToken = ref(localStorage.getItem('talk_room_token') || '')
 const talkMessages = ref([])
@@ -113,8 +180,13 @@ const ensureRoom = async () => {
 
 const fetchRooms = async () => {
   try {
-    const res = await fetch('/ocs/v2.php/apps/spreed/api/v4/room', { headers: { ...ocsHeaders() } })
-    const json = await res.json().catch(() => ({}))
+    // Prefer v1 per compatibility; fallback to v4
+    let res = await fetch(ocsUrl('/ocs/v2.php/apps/spreed/api/v1/room'), { headers: { ...ocsHeaders() } })
+    let json = await res.json().catch(() => ({}))
+    if (!res.ok || !json?.ocs) {
+      res = await fetch(ocsUrl('/ocs/v2.php/apps/spreed/api/v4/room'), { headers: { ...ocsHeaders() } })
+      json = await res.json().catch(() => ({}))
+    }
     const list = json?.ocs?.data || []
     rooms.value = list.map(r => ({ token: r.token || r.roomToken || r.id, displayName: r.displayName || r.name || r.token }))
     if (!talkRoomToken.value && rooms.value.length) {
@@ -138,12 +210,22 @@ const onSelectRoom = () => {
 
 const fetchTalk = async () => {
   if (!talkRoomToken.value) return
-  const res = await fetch(`/ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(talkRoomToken.value)}/message`, {
-    method: 'GET',
-    headers: { ...ocsHeaders() },
-  })
-  const json = await res.json().catch(() => ({}))
-  const items = json?.ocs?.data?.messages || []
+  const tryGet = async (path) => {
+    const r = await fetch(ocsUrl(path), { method: 'GET', headers: { ...ocsHeaders() } })
+    const j = await r.json().catch(() => ({}))
+    return { r, j }
+  }
+  let { r, j } = await tryGet(`/ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(talkRoomToken.value)}/message`)
+  if (!r.ok || !j?.ocs) {
+    ({ r, j } = await tryGet(`/ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(talkRoomToken.value)}/messages?limit=50`))
+  }
+  if (!r.ok || !j?.ocs) {
+    ({ r, j } = await tryGet(`/ocs/v2.php/apps/spreed/api/v1/room/${encodeURIComponent(talkRoomToken.value)}/messages?limit=50`))
+  }
+  if (!r.ok || !j?.ocs) {
+    ({ r, j } = await tryGet(`/index.php/apps/spreed/api/v1/room/${encodeURIComponent(talkRoomToken.value)}/messages?limit=50`))
+  }
+  const items = j?.ocs?.data?.messages || j?.ocs?.data || []
   // Map minimal fields to widget messages
   const mapped = items.map(m => ({
     id: m.id || m.timestamp || Math.random(),
@@ -154,12 +236,13 @@ const fetchTalk = async () => {
   }))
   // floating notification on new
   if (mapped.length && mapped[mapped.length - 1].id !== lastMessageId) {
-    if (lastMessageId && document.visibilityState === 'hidden' || activeView.value !== 'talk') {
+    if ((lastMessageId && document.visibilityState === 'hidden') || activeTab.value !== 'talk') {
       showToast(`New message: ${mapped[mapped.length - 1].message.slice(0, 60)}`)
     }
     lastMessageId = mapped[mapped.length - 1].id
   }
   messages.value = mapped
+  await nextTick(); if (messagesContainer.value) messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
 }
 const isSelf = (m) => {
   try { return (window.OC?.currentUser || window.OC?.getCurrentUser?.()) === m.actorId } catch { return false }
@@ -173,12 +256,25 @@ const formatTime = (ts) => {
 const sendTalk = async (text) => {
   if (!text) return
   if (!talkRoomToken.value) return
-  const body = new URLSearchParams({ message: text })
-  await fetch(`/ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(talkRoomToken.value)}/message`, {
-    method: 'POST',
-    headers: { ...ocsHeaders() },
-    body,
-  })
+  // helper to try different endpoints across Talk versions
+  const tryPost = async (path, payload) => {
+    const res = await fetch(ocsUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', ...ocsHeaders() },
+      body: new URLSearchParams(payload),
+    })
+    const json = await res.json().catch(() => ({}))
+    return { res, json }
+  }
+  let { res } = await tryPost(`/ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(talkRoomToken.value)}/message`, { message: text })
+  if (!res.ok) {
+    // legacy endpoint
+    ({ res } = await tryPost(`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(talkRoomToken.value)}`, { message: text }))
+  }
+  if (!res.ok) {
+    showToast(`Failed to send (${res.status})`)
+    return
+  }
   await fetchTalk()
 }
 
@@ -194,14 +290,54 @@ const sendMessage = async () => {
   }
 }
 
-// ===== Activities integration (compact list) =====
-const activities = ref([])
-const fetchActivities = async () => {
-  const url = '/ocs/v2.php/apps/activity/api/v2/activity'
-  const res = await fetch(url, { headers: { ...ocsHeaders() } })
-  const json = await res.json().catch(() => ({}))
-  const list = json?.ocs?.data || []
-  activities.value = list.slice(0, 5).map(a => ({ id: a.activity_id || a.id, subject: a.subject_rich?.[0] || a.subject || 'Activity' }))
+// Create group via Talk OCS
+const toggleCreate = () => { showCreate.value = !showCreate.value }
+const submitCreate = async () => {
+  const name = newGroupName.value.trim()
+  if (!name) { showToast('Enter a group name'); return }
+  // try primary payload
+  const tryCreate = async (payload) => {
+    const res = await fetch(ocsUrl('/ocs/v2.php/apps/spreed/api/v4/room'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', ...ocsHeaders() },
+      body: new URLSearchParams(payload),
+    })
+    const json = await res.json().catch(() => ({}))
+    return { res, json }
+  }
+  let { res, json } = await tryCreate({ roomType: 'group', displayName: name })
+  if (!res.ok) {
+    // fallback variants for older Talk versions
+    ({ res, json } = await tryCreate({ roomType: 'group', name }))
+  }
+  if (!res.ok) {
+    ({ res, json } = await tryCreate({ conversationType: 'group', roomName: name }))
+  }
+  if (!res.ok) { showToast(`Failed to create group (${res.status})`); return }
+  const roomData = json?.ocs?.data || {}
+  const roomId = (roomData.token || roomData.roomToken || roomData.id)
+  if (!roomId) { showToast('Group API returned no token'); return }
+  // Immediately reflect in UI: prepend new room, select it, and load messages
+  const newRoom = { token: roomId, displayName: roomData.displayName || name }
+  rooms.value = [newRoom, ...rooms.value.filter(r => (r.token !== roomId))]
+  talkRoomToken.value = roomId
+  selectedRoomToken.value = roomId
+  selectedRoomName.value = newRoom.displayName
+  localStorage.setItem('talk_room_token', talkRoomToken.value)
+  await fetchTalk()
+  // Also refresh full list in the background to keep it accurate
+  fetchRooms()
+  showToast('Group created')
+  newGroupName.value = ''
+  showCreate.value = false
+  lastCreatedRoomId.value = roomId
+  showParticipants.value = true
+}
+
+// Start meeting: create ephemeral conversation link and open in new tab
+const toggleMeeting = () => {
+  if (!talkRoomToken.value) { showToast('Select a room first'); return }
+  showMeeting.value = !showMeeting.value
 }
 
 // Floating notification
@@ -220,27 +356,98 @@ const showToast = (text) => {
 
 // Polling
 onMounted(() => {
-  fetchRooms(); fetchTalk(); fetchActivities()
+  fetchRooms(); fetchTalk()
   setInterval(fetchTalk, 5000)
-  setInterval(fetchActivities, 60000)
 })
+
+// ===== AI (Gemini via server proxy) =====
+const aiContainer = ref(null)
+const aiMessages = ref([])
+const aiInput = ref('')
+const aiLoading = ref(false)
+const aiError = ref('')
+
+const renderMarkdown = (text) => {
+  // Minimal safe markdown rendering (bold, code, links)
+  let t = (text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  t = t.replace(/`([^`]+)`/g, '<code>$1</code>')
+  t = t.replace(/\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1<\/a>')
+  return t
+}
+
+const scrollAI = () => { if (aiContainer.value) aiContainer.value.scrollTop = aiContainer.value.scrollHeight }
+
+const sendAI = async () => {
+  const q = aiInput.value.trim()
+  if (!q) return
+  aiInput.value = ''
+  aiMessages.value.push({ role: 'user', text: q })
+  aiLoading.value = true
+  aiError.value = ''
+  scrollAI()
+  try {
+    const url = (window?.OC?.generateUrl ? window.OC.generateUrl('/apps/my-nextcloud-app/ai/gemini') : '/index.php/apps/my-nextcloud-app/ai/gemini')
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...ocsHeaders() },
+      body: JSON.stringify({ prompt: q, history: aiMessages.value.map(m => ({ role: m.role, parts: [{ text: m.text }] })) }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok || !json.ok) throw new Error(json.error || 'AI request failed')
+    const text = json?.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response'
+    aiMessages.value.push({ role: 'model', text })
+  } catch (e) {
+    aiError.value = e?.message || 'AI error'
+  } finally {
+    aiLoading.value = false
+    scrollAI()
+  }
+}
+
+const retryAI = () => { if (aiMessages.value.length) { const last = aiMessages.value.pop(); aiInput.value = last?.text || ''; sendAI() } }
 </script>
 <style scoped>
 .chat-widget { width: 360px; border-radius: 16px; padding: 14px; background: var(--color-main-background); color: var(--color-main-text); border: 1px solid var(--color-border); box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.chat-widget.embedded { width: 100%; }
+.chat-widget.minimized { padding-bottom: 10px }
 .chat-widget h2 { color: var(--color-main-text); margin: 0; }
 .chat-widget p { color: var(--color-text-maxcontrast); margin: 0; }
 .header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
 .title { display:flex; align-items:center; gap:10px }
-.messages-area { max-height: 320px; overflow-y: auto; padding-right:6px }
-.message-bubble { background: var(--color-background-darker); border-radius: 12px; padding:10px; margin:8px 0; box-shadow: 0 2px 8px rgba(0,0,0,.08); color: var(--color-main-text); border: 1px solid var(--color-border); max-width: 280px }
-.message-bubble.self { margin-left: auto; background: var(--color-primary); color: var(--color-primary-text); border-color: var(--color-primary) }
+.header-controls { display:flex; gap:8px }
+.icon-btn { width:36px; height:36px; border-radius:10px; border:1px solid var(--color-border); background: linear-gradient(135deg,#6a5acd,#7c3aed); color:#fff; font-weight:700; cursor:pointer }
+.icon-btn:hover { filter: brightness(1.05) }
+.messages-area { max-height: 480px; overflow-y: auto; padding-right:6px }
+.message-row { display:flex; gap:8px; margin:8px 0; align-items:flex-end }
+.message-row.self { flex-direction: row-reverse }
+.avatar { width:28px; height:28px; border-radius:50%; background: var(--color-primary); color: var(--color-primary-text); display:flex; align-items:center; justify-content:center; font-weight:700 }
+.bubble { background: var(--color-background-darker); border: 1px solid var(--color-border); border-radius: 12px; padding:10px; max-width: 280px; box-shadow: 0 2px 8px rgba(0,0,0,.08) }
+.message-row.self .bubble { background: var(--color-primary); color: var(--color-primary-text); border-color: var(--color-primary) }
 .meta { display:flex; justify-content: space-between; font-size: 11px; opacity:.8; margin-bottom:4px }
 .weather { font-weight:600 }
-.shortcuts { display:flex; gap:8px; margin-bottom:8px }
-.shortcut { padding:6px 10px; border-radius:10px; border:1px solid var(--color-border); background: var(--color-background-darker); color: var(--color-main-text); cursor:pointer; transition: transform .2s ease, background .2s ease }
-.shortcut:hover { transform: translateY(-1px); background: var(--color-background-hover) }
+.toolbar { display:flex; gap:8px; align-items:center; margin-bottom:8px }
+.toolbar-actions { display:flex; gap:8px }
+.btn { padding:6px 10px; border-radius:10px; border:1px solid var(--color-border); background: var(--color-background-darker); color: var(--color-main-text); cursor:pointer; transition: transform .2s ease, background .2s ease }
+.btn:hover { transform: translateY(-1px); background: var(--color-background-hover) }
 .message-input-area { display:flex; gap:8px; margin-top:10px }
 .message-input { flex:1; padding:10px; border-radius: 10px; border:1px solid var(--color-border); background: var(--color-background-darker); color: var(--color-main-text) }
 .send-button { padding:8px 12px; border-radius:10px; border:none; background: var(--color-primary); color: var(--color-primary-text); cursor:pointer }
 .room-select { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-background-darker); color: var(--color-main-text); cursor: pointer; font-size: 14px; }
+.tabs { display:flex; gap:6px; margin:6px 0 10px }
+.tab { padding:8px 12px; border-radius:10px; border:1px solid var(--color-border); background: var(--color-background-darker); color: var(--color-main-text); cursor:pointer }
+.tab.active { background: var(--color-primary); color: var(--color-primary-text); border-color: var(--color-primary) }
+.skeleton { padding:8px }
+.skeleton .line { height:10px; background: var(--color-background-darker); border-radius:6px; margin:6px 0 }
+.skeleton .w80 { width:80% }
+.skeleton .w60 { width:60% }
+
+/* Inline panels and overlay */
+.panel { display:flex; gap:8px; align-items:center; margin:6px 0 }
+.panel-input { flex:1; padding:8px 10px; border-radius:10px; border:1px solid var(--color-border); background: var(--color-background-darker); color: var(--color-main-text) }
+.panel-actions { display:flex; gap:8px }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 10000; display:flex; align-items:center; justify-content:center }
+.overlay-inner { width: min(1100px, 96%); height: min(720px, 86%); background: var(--color-main-background); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); display:flex; flex-direction: column }
+.overlay-bar { display:flex; align-items:center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--color-border) }
+.overlay-frame { flex:1; border: 0; border-radius: 0 0 12px 12px; width: 100% }
 </style>
